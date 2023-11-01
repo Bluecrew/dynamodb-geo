@@ -5,7 +5,7 @@
 	<artifactId>dynamodb-geo</artifactId>
 	<packaging>jar</packaging>
 	<name>Amazon DynamoDB Geo on the AWS SDK for Java</name>
-	<version>1.0.0</version>
+	<version>2.0.0</version>
 	<description>Geo Library for Amazon DynamoDB provides methods to create, retrieve, 
 	and query for geo-spatial data records in Amazon DynamoDB tables.
 	</description>
@@ -45,20 +45,21 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.google.common.geometry</groupId>
-			<artifactId>s2-geometry-java</artifactId>
-			<version>1.0.0</version>
-			<scope>system</scope>
-			<systemPath>${basedir}/lib/s2-geometry-library/s2-geometry-java.jar
-			</systemPath>
+			<groupId>com.google.geometry</groupId>
+			<artifactId>s2-geometry</artifactId>
+			<version>2.0.0</version>
 		</dependency>
 
 		<dependency>
-			<groupId>com.google.common</groupId>
-			<artifactId>guava-r09</artifactId>
-			<version>1.0.0</version>
-			<scope>system</scope>
-			<systemPath>${basedir}/lib/guava-r09/guava-r09.jar</systemPath>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>32.0.0-jre</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.opencsv</groupId>
+			<artifactId>opencsv</artifactId>
+			<version>4.1</version>
 		</dependency>
 	</dependencies>
 
@@ -81,29 +82,32 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<configuration>
-						<source>1.6</source>
-						<target>1.6</target>
+						<source>11</source>
+						<target>11</target>
 						<encoding>UTF-8</encoding>
 					</configuration>
 				</plugin>
 			</plugins>
 		</pluginManagement>
 
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-gpg-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>sign-artifacts</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>sign</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
 	</build>
+	<profiles>
+		<profile>
+			<id>github</id>
+			<activation>
+				<property>
+					<name>useGitHubPackages</name>
+					<value>true</value>
+				</property>
+			</activation>
+			<distributionManagement>
+				<repository>
+					<id>github</id>
+					<name>GitHub bluecre Apache Maven Packages</name>
+					<url>https://maven.pkg.github.com/bluecrew/dynamodb-geo</url>
+				</repository>
+			</distributionManagement>
+		</profile>
+	</profiles>
 
 </project>

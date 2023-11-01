@@ -25,6 +25,18 @@ import com.google.common.geometry.S2LatLngRect;
 public class S2Util {
 
 	/**
+	 * Approximate "effective" radius of the Earth in meters.
+	 */
+	public static final double EARTH_RADIUS_METERS = 6367000.0;
+
+	/**
+	 * Returns the surface distance to the given point assuming the default Earth
+	 * radius of {@link #EARTH_RADIUS_METERS}.
+	 */
+	public static double getEarthDistance(final S2LatLng center, final S2LatLng o) {
+		return center.getDistance(o, EARTH_RADIUS_METERS);
+	}
+	/**
 	 * An utility method to get a bounding box of latitude and longitude from a given GeoQueryRequest.
 	 * 
 	 * @param geoQueryRequest
@@ -63,8 +75,8 @@ public class S2Util {
 			S2LatLng lngReferenceLatLng = S2LatLng.fromDegrees(centerPoint.getLatitude(), centerPoint.getLongitude()
 					+ lngReferenceUnit);
 
-			double latForRadius = radiusInMeter / centerLatLng.getEarthDistance(latReferenceLatLng);
-			double lngForRadius = radiusInMeter / centerLatLng.getEarthDistance(lngReferenceLatLng);
+			double latForRadius = radiusInMeter / S2Util.getEarthDistance(centerLatLng, latReferenceLatLng);
+			double lngForRadius = radiusInMeter / S2Util.getEarthDistance(centerLatLng, lngReferenceLatLng);
 
 			S2LatLng minLatLng = S2LatLng.fromDegrees(centerPoint.getLatitude() - latForRadius,
 					centerPoint.getLongitude() - lngForRadius);
@@ -76,4 +88,5 @@ public class S2Util {
 
 		return null;
 	}
+
 }

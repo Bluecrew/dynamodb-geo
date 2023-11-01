@@ -419,7 +419,7 @@ public class GeoDataManager {
 			if (latLngRect != null && latLngRect.contains(latLng)) {
 				result.add(item);
 			} else if (centerLatLng != null && radiusInMeter > 0
-					&& centerLatLng.getEarthDistance(latLng) <= radiusInMeter) {
+					&& S2Util.getEarthDistance(centerLatLng, latLng) <= radiusInMeter) {
 				result.add(item);
 			}
 		}
