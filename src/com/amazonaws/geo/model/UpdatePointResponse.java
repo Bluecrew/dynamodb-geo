@@ -15,9 +15,16 @@
 
 package com.amazonaws.geo.model;
 
-public class QueryRadiusResult extends GeoQueryResult {
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemResponse;
 
-	public QueryRadiusResult(GeoQueryResult geoQueryResult) {
-		super(geoQueryResult);
+public class UpdatePointResponse extends GeoDataResponse {
+	private UpdateItemResponse updateItemResponse;
+
+	public UpdatePointResponse(UpdateItemResponse updateItemResponse) {
+		this.updateItemResponse = updateItemResponse;
+	}
+
+	public UpdateItemResponse getUpdateItemResponse() {
+		return updateItemResponse;
 	}
 }

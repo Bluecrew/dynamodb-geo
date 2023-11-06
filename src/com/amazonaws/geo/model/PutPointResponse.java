@@ -15,6 +15,16 @@
 
 package com.amazonaws.geo.model;
 
-public abstract class GeoDataResult {
+import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
 
+public class PutPointResponse extends GeoDataResponse {
+	private PutItemResponse putItemResponse;
+
+	public PutPointResponse(PutItemResponse putItemResponse) {
+		this.putItemResponse = putItemResponse;
+	}
+
+	public PutItemResponse getPutItemResponse() {
+		return putItemResponse;
+	}
 }

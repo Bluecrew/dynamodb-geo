@@ -15,35 +15,35 @@
 
 package com.amazonaws.geo.model;
 
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-
-public class GeoQueryResult extends GeoDataResult {
+public class GeoQueryResponse extends GeoDataResponse {
 	private List<Map<String, AttributeValue>> item;
-	private List<QueryResult> queryResults;
+	private List<QueryResponse> queryResponses;
 
-	public GeoQueryResult() {
+	public GeoQueryResponse() {
 		item = Collections.synchronizedList(new ArrayList<Map<String, AttributeValue>>());
-		queryResults = Collections.synchronizedList(new ArrayList<QueryResult>());
+		queryResponses = Collections.synchronizedList(new ArrayList<QueryResponse>());
 	}
 
-	public GeoQueryResult(GeoQueryResult geoQueryResult) {
+	public GeoQueryResponse(GeoQueryResponse geoQueryResponse) {
 		this();
 
-		item = geoQueryResult.getItem();
-		queryResults = geoQueryResult.getQueryResults();
+		item = geoQueryResponse.getItem();
+		queryResponses = geoQueryResponse.getQueryResponses();
 	}
 
 	public List<Map<String, AttributeValue>> getItem() {
 		return item;
 	}
 
-	public List<QueryResult> getQueryResults() {
-		return queryResults;
+	public List<QueryResponse> getQueryResponses() {
+		return queryResponses;
 	}
 }

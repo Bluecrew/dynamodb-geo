@@ -15,9 +15,16 @@
 
 package com.amazonaws.geo.model;
 
-public class QueryRectangleResult extends GeoQueryResult {
+import software.amazon.awssdk.services.dynamodb.model.GetItemResponse;
 
-	public QueryRectangleResult(GeoQueryResult geoQueryResult) {
-		super(geoQueryResult);
+public class GetPointResponse extends GeoDataResponse {
+	private GetItemResponse getItemResponse;
+
+	public GetPointResponse(GetItemResponse getItemResponse) {
+		this.getItemResponse = getItemResponse;
+	}
+
+	public GetItemResponse getGetItemResponse() {
+		return getItemResponse;
 	}
 }
