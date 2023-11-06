@@ -15,45 +15,17 @@
 
 package com.amazonaws.geo.dynamodb.internal;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import com.amazonaws.geo.GeoDataManagerConfiguration;
-import com.amazonaws.geo.model.BatchWritePointResult;
-import com.amazonaws.geo.model.DeletePointRequest;
-import com.amazonaws.geo.model.DeletePointResult;
-import com.amazonaws.geo.model.GeohashRange;
-import com.amazonaws.geo.model.GetPointRequest;
-import com.amazonaws.geo.model.GetPointResult;
-import com.amazonaws.geo.model.PutPointRequest;
-import com.amazonaws.geo.model.PutPointResult;
-import com.amazonaws.geo.model.UpdatePointRequest;
-import com.amazonaws.geo.model.UpdatePointResult;
+import com.amazonaws.geo.model.*;
+import com.amazonaws.geo.model.DeletePointResponse;
 import com.amazonaws.geo.s2.internal.S2Manager;
 import com.amazonaws.geo.util.GeoJsonMapper;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
-import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
-import com.amazonaws.services.dynamodbv2.model.Condition;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
-import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemResult;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.PutItemResult;
-import com.amazonaws.services.dynamodbv2.model.PutRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.model.WriteRequest;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
 public class DynamoDBManager {
-	private GeoDataManagerConfiguration config;
+	private final GeoDataManagerConfiguration config;
 
 	public DynamoDBManager(GeoDataManagerConfiguration config) {
 		this.config = config;
@@ -70,141 +42,143 @@ public class DynamoDBManager {
 	 * 
 	 * @return The query result.
 	 */
-	public List<QueryResult> queryGeohash(QueryRequest queryRequest, long hashKey, GeohashRange range) {
-		List<QueryResult> queryResults = new ArrayList<QueryResult>();
+	public List<QueryResponse> queryGeohash(long hashKey, GeohashRange range) {
+		List<QueryResponse> queryResponses = new ArrayList<>();
 		Map<String, AttributeValue> lastEvaluatedKey = null;
 
 		do {
-			Map<String, Condition> keyConditions = new HashMap<String, Condition>();
+			Map<String, Condition> keyConditions = new HashMap<>();
 
-			Condition hashKeyCondition = new Condition().withComparisonOperator(ComparisonOperator.EQ)
-					.withAttributeValueList(new AttributeValue().withN(String.valueOf(hashKey)));
+			Condition hashKeyCondition = Condition.builder()
+				.comparisonOperator(ComparisonOperator.EQ)
+				.attributeValueList(AttributeValue.builder().n(String.valueOf(hashKey)).build()).build();
 			keyConditions.put(config.getHashKeyAttributeName(), hashKeyCondition);
 
-			AttributeValue minRange = new AttributeValue().withN(Long.toString(range.getRangeMin()));
-			AttributeValue maxRange = new AttributeValue().withN(Long.toString(range.getRangeMax()));
+			AttributeValue minRange = AttributeValue.builder().n(Long.toString(range.getRangeMin())).build();
+			AttributeValue maxRange = AttributeValue.builder().n(Long.toString(range.getRangeMax())).build();
 
-			Condition geohashCondition = new Condition().withComparisonOperator(ComparisonOperator.BETWEEN)
-					.withAttributeValueList(minRange, maxRange);
+			Condition geohashCondition = Condition.builder().comparisonOperator(ComparisonOperator.BETWEEN)
+				.attributeValueList(minRange, maxRange).build();
 			keyConditions.put(config.getGeohashAttributeName(), geohashCondition);
 
-			queryRequest.withTableName(config.getTableName()).withKeyConditions(keyConditions)
-					.withIndexName(config.getGeohashIndexName()).withConsistentRead(true)
-					.withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL).withExclusiveStartKey(lastEvaluatedKey);
+			QueryRequest queryRequest = QueryRequest.builder()
+				.tableName(config.getTableName())
+				.keyConditions(keyConditions)
+				.indexName(config.getGeohashIndexName())
+				.consistentRead(false)
+				.returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+				.exclusiveStartKey(lastEvaluatedKey).build();
 
-			QueryResult queryResult = config.getDynamoDBClient().query(queryRequest);
-			queryResults.add(queryResult);
+			QueryResponse queryResponse = config.getDynamoDBClient().query(queryRequest);
+			queryResponses.add(queryResponse);
 
-			lastEvaluatedKey = queryResult.getLastEvaluatedKey();
+			lastEvaluatedKey = queryResponse.hasLastEvaluatedKey() ? queryResponse.lastEvaluatedKey() : null;
 
 		} while (lastEvaluatedKey != null);
 
-		return queryResults;
+		return queryResponses;
 	}
 
-	public GetPointResult getPoint(GetPointRequest getPointRequest) {
+	public GetPointResponse getPoint(GetPointRequest getPointRequest) {
 		long geohash = S2Manager.generateGeohash(getPointRequest.getGeoPoint());
 		long hashKey = S2Manager.generateHashKey(geohash, config.getHashKeyLength());
+		AttributeValue hashKeyValue = AttributeValue.builder().n(String.valueOf(hashKey)).build();
+		GetItemRequest getItemRequest = GetItemRequest.builder()
+			.tableName(config.getTableName())
+			.key(Map.of(config.getHashKeyAttributeName(), hashKeyValue,
+				config.getRangeKeyAttributeName(), getPointRequest.getRangeKeyValue())).build();
+		GetItemResponse getItemResponse = config.getDynamoDBClient().getItem(getItemRequest);
 
-		GetItemRequest getItemRequest = getPointRequest.getGetItemRequest();
-		getItemRequest.setTableName(config.getTableName());
-
-		AttributeValue hashKeyValue = new AttributeValue().withN(String.valueOf(hashKey));
-		getItemRequest.getKey().put(config.getHashKeyAttributeName(), hashKeyValue);
-		getItemRequest.getKey().put(config.getRangeKeyAttributeName(), getPointRequest.getRangeKeyValue());
-
-		GetItemResult getItemResult = config.getDynamoDBClient().getItem(getItemRequest);
-		GetPointResult getPointResult = new GetPointResult(getItemResult);
-
-		return getPointResult;
+        return new GetPointResponse(getItemResponse);
 	}
 
-	public PutPointResult putPoint(PutPointRequest putPointRequest) {
+	public PutPointResponse putPoint(PutPointRequest putPointRequest) {
 		long geohash = S2Manager.generateGeohash(putPointRequest.getGeoPoint());
 		long hashKey = S2Manager.generateHashKey(geohash, config.getHashKeyLength());
 		String geoJson = GeoJsonMapper.stringFromGeoObject(putPointRequest.getGeoPoint());
 
-		PutItemRequest putItemRequest = putPointRequest.getPutItemRequest();
-		putItemRequest.setTableName(config.getTableName());
+		AttributeValue hashKeyValue = AttributeValue.builder().n(String.valueOf(hashKey)).build();
+		AttributeValue geohashValue = AttributeValue.builder().n(Long.toString(geohash)).build();
+		AttributeValue geoJsonValue = AttributeValue.builder().s(geoJson).build();
 
-		AttributeValue hashKeyValue = new AttributeValue().withN(String.valueOf(hashKey));
-		putItemRequest.getItem().put(config.getHashKeyAttributeName(), hashKeyValue);
-		putItemRequest.getItem().put(config.getRangeKeyAttributeName(), putPointRequest.getRangeKeyValue());
-		AttributeValue geohashValue = new AttributeValue().withN(Long.toString(geohash));
-		putItemRequest.getItem().put(config.getGeohashAttributeName(), geohashValue);
-		AttributeValue geoJsonValue = new AttributeValue().withS(geoJson);
-		putItemRequest.getItem().put(config.getGeoJsonAttributeName(), geoJsonValue);
+		PutItemRequest putItemRequest = PutItemRequest.builder()
+			.tableName(config.getTableName())
+			.item(Map.of(config.getHashKeyAttributeName(), hashKeyValue,
+		config.getRangeKeyAttributeName(), putPointRequest.getRangeKeyValue(),
+		config.getGeohashAttributeName(), geohashValue,
+		config.getGeoJsonAttributeName(), geoJsonValue))
+			.build();
+		PutItemResponse putItemResponse = config.getDynamoDBClient().putItem(putItemRequest);
 
-		PutItemResult putItemResult = config.getDynamoDBClient().putItem(putItemRequest);
-		PutPointResult putPointResult = new PutPointResult(putItemResult);
-
-		return putPointResult;
+        return new PutPointResponse(putItemResponse);
 	}
 	
-	public BatchWritePointResult batchWritePoints(List<PutPointRequest> putPointRequests) {
-		BatchWriteItemRequest batchItemRequest = new BatchWriteItemRequest();
-		List<WriteRequest> writeRequests = new ArrayList<WriteRequest>();
+	public BatchWritePointResponse batchWritePoints(List<PutPointRequest> putPointRequests) {
+		List<WriteRequest> writeRequests = new ArrayList<>();
 		for (PutPointRequest putPointRequest : putPointRequests) {
 			long geohash = S2Manager.generateGeohash(putPointRequest.getGeoPoint());
 			long hashKey = S2Manager.generateHashKey(geohash, config.getHashKeyLength());
 			String geoJson = GeoJsonMapper.stringFromGeoObject(putPointRequest.getGeoPoint());
 
-			PutRequest putRequest = putPointRequest.getPutRequest();
-			AttributeValue hashKeyValue = new AttributeValue().withN(String.valueOf(hashKey));
-			putRequest.getItem().put(config.getHashKeyAttributeName(), hashKeyValue);
-			putRequest.getItem().put(config.getRangeKeyAttributeName(), putPointRequest.getRangeKeyValue());
-			AttributeValue geohashValue = new AttributeValue().withN(Long.toString(geohash));
-			putRequest.getItem().put(config.getGeohashAttributeName(), geohashValue);
-			AttributeValue geoJsonValue = new AttributeValue().withS(geoJson);
-			putRequest.getItem().put(config.getGeoJsonAttributeName(), geoJsonValue);			
-			
-			WriteRequest writeRequest = new WriteRequest(putRequest);
+			AttributeValue hashKeyValue = AttributeValue.builder().n(String.valueOf(hashKey)).build();
+			AttributeValue geohashValue = AttributeValue.builder().n(Long.toString(geohash)).build();
+			AttributeValue geoJsonValue = AttributeValue.builder().s(geoJson).build();
+
+			PutRequest putRequest = PutRequest.builder()
+			.item(Map.of(config.getHashKeyAttributeName(), hashKeyValue,
+			config.getRangeKeyAttributeName(), putPointRequest.getRangeKeyValue(),
+			config.getGeohashAttributeName(), geohashValue,
+			config.getGeoJsonAttributeName(), geoJsonValue))
+			.build();
+			WriteRequest writeRequest = WriteRequest.builder().putRequest(putRequest).build();
 			writeRequests.add(writeRequest);
 		}
-		Map<String, List<WriteRequest>> requestItems = new HashMap<String, List<WriteRequest>>();
+		Map<String, List<WriteRequest>> requestItems = new HashMap<>();
 		requestItems.put(config.getTableName(), writeRequests);
-		batchItemRequest.setRequestItems(requestItems);
-		BatchWriteItemResult batchWriteItemResult = config.getDynamoDBClient().batchWriteItem(batchItemRequest);
-		BatchWritePointResult batchWritePointResult = new BatchWritePointResult(batchWriteItemResult);
-		return batchWritePointResult;
+		BatchWriteItemRequest batchItemRequest = BatchWriteItemRequest.builder().requestItems(requestItems).build();
+		BatchWriteItemResponse batchWriteItemResponse = config.getDynamoDBClient().batchWriteItem(batchItemRequest);
+        return new BatchWritePointResponse(batchWriteItemResponse);
 	}
 
-	public UpdatePointResult updatePoint(UpdatePointRequest updatePointRequest) {
+	public UpdatePointResponse updatePoint(UpdatePointRequest updatePointRequest, Map<String, AttributeValueUpdate> updates) {
 		long geohash = S2Manager.generateGeohash(updatePointRequest.getGeoPoint());
 		long hashKey = S2Manager.generateHashKey(geohash, config.getHashKeyLength());
 
-		UpdateItemRequest updateItemRequest = updatePointRequest.getUpdateItemRequest();
-		updateItemRequest.setTableName(config.getTableName());
-
-		AttributeValue hashKeyValue = new AttributeValue().withN(String.valueOf(hashKey));
-		updateItemRequest.getKey().put(config.getHashKeyAttributeName(), hashKeyValue);
-		updateItemRequest.getKey().put(config.getRangeKeyAttributeName(), updatePointRequest.getRangeKeyValue());
+		Map<String, AttributeValueUpdate> updatedItems = new HashMap<>();
 
 		// Geohash and geoJson cannot be updated.
-		updateItemRequest.getAttributeUpdates().remove(config.getGeohashAttributeName());
-		updateItemRequest.getAttributeUpdates().remove(config.getGeoJsonAttributeName());
+		for (String updateKey : updates.keySet()) {
+			if (!config.getGeohashAttributeName().equals(updateKey) && !config.getGeohashAttributeName().equals(updateKey)) {
+				updatedItems.put(updateKey, updates.get(updateKey));
+			}
+		}
 
-		UpdateItemResult updateItemResult = config.getDynamoDBClient().updateItem(updateItemRequest);
-		UpdatePointResult updatePointResult = new UpdatePointResult(updateItemResult);
+		AttributeValue hashKeyValue = AttributeValue.builder().n(String.valueOf(hashKey)).build();
+		UpdateItemRequest updateItemRequest = UpdateItemRequest.builder().tableName(config.getTableName())
+		.key(Map.of(config.getHashKeyAttributeName(), hashKeyValue,
+		config.getRangeKeyAttributeName(), updatePointRequest.getRangeKeyValue()))
+			.attributeUpdates(updatedItems)
+			.build();
 
-		return updatePointResult;
+
+		UpdateItemResponse updateItemResponse = config.getDynamoDBClient().updateItem(updateItemRequest);
+
+        return new UpdatePointResponse(updateItemResponse);
 	}
 
-	public DeletePointResult deletePoint(DeletePointRequest deletePointRequest) {
+	public DeletePointResponse deletePoint(DeletePointRequest deletePointRequest) {
 		long geohash = S2Manager.generateGeohash(deletePointRequest.getGeoPoint());
 		long hashKey = S2Manager.generateHashKey(geohash, config.getHashKeyLength());
 
-		DeleteItemRequest deleteItemRequest = deletePointRequest.getDeleteItemRequest();
+		AttributeValue hashKeyValue = AttributeValue.builder().n(String.valueOf(hashKey)).build();
 
-		deleteItemRequest.setTableName(config.getTableName());
+		DeleteItemRequest deleteItemRequest = DeleteItemRequest.builder().tableName(config.getTableName())
+			.key(Map.of(config.getHashKeyAttributeName(), hashKeyValue,
+		config.getRangeKeyAttributeName(), deletePointRequest.getRangeKeyValue()))
+			.build();
 
-		AttributeValue hashKeyValue = new AttributeValue().withN(String.valueOf(hashKey));
-		deleteItemRequest.getKey().put(config.getHashKeyAttributeName(), hashKeyValue);
-		deleteItemRequest.getKey().put(config.getRangeKeyAttributeName(), deletePointRequest.getRangeKeyValue());
+		DeleteItemResponse deleteItemResponse = config.getDynamoDBClient().deleteItem(deleteItemRequest);
 
-		DeleteItemResult deleteItemResult = config.getDynamoDBClient().deleteItem(deleteItemRequest);
-		DeletePointResult deletePointResult = new DeletePointResult(deleteItemResult);
-
-		return deletePointResult;
+        return new DeletePointResponse(deleteItemResponse);
 	}
 }

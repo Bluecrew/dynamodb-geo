@@ -21,32 +21,18 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import com.amazonaws.AmazonClientException;
+import software.amazon.awssdk.core.exception.SdkException;
 import com.amazonaws.geo.dynamodb.internal.DynamoDBManager;
 import com.amazonaws.geo.dynamodb.internal.DynamoDBUtil;
-import com.amazonaws.geo.model.BatchWritePointResult;
-import com.amazonaws.geo.model.DeletePointRequest;
-import com.amazonaws.geo.model.DeletePointResult;
-import com.amazonaws.geo.model.GeoPoint;
-import com.amazonaws.geo.model.GeoQueryRequest;
-import com.amazonaws.geo.model.GeoQueryResult;
-import com.amazonaws.geo.model.GeohashRange;
-import com.amazonaws.geo.model.GetPointRequest;
-import com.amazonaws.geo.model.GetPointResult;
-import com.amazonaws.geo.model.PutPointRequest;
-import com.amazonaws.geo.model.PutPointResult;
-import com.amazonaws.geo.model.QueryRadiusRequest;
-import com.amazonaws.geo.model.QueryRadiusResult;
-import com.amazonaws.geo.model.QueryRectangleRequest;
-import com.amazonaws.geo.model.QueryRectangleResult;
-import com.amazonaws.geo.model.UpdatePointRequest;
-import com.amazonaws.geo.model.UpdatePointResult;
+import com.amazonaws.geo.model.*;
+import com.amazonaws.geo.model.DeletePointResponse;
 import com.amazonaws.geo.s2.internal.S2Manager;
 import com.amazonaws.geo.s2.internal.S2Util;
 import com.amazonaws.geo.util.GeoJsonMapper;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.QueryRequest;
-import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValueUpdate;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
 import com.google.common.geometry.S2CellId;
 import com.google.common.geometry.S2CellUnion;
 import com.google.common.geometry.S2LatLng;
@@ -63,8 +49,8 @@ import com.google.common.geometry.S2LatLngRect;
  * </p>
  * */
 public class GeoDataManager {
-	private GeoDataManagerConfiguration config;
-	private DynamoDBManager dynamoDBManager;
+	private final GeoDataManagerConfiguration config;
+	private final DynamoDBManager dynamoDBManager;
 
 	/**
 	 * <p>
@@ -120,15 +106,15 @@ public class GeoDataManager {
 	 * PutPointRequest putPointRequest = new PutPointRequest(geoPoint, rangeKeyValue);
 	 * putPointRequest.getPutItemRequest().getItem().put(&quot;title&quot;, titleValue);
 	 * 
-	 * PutPointResult putPointResult = geoDataManager.putPoint(putPointRequest);
+	 * PutPointResponse putPointResponse = geoDataManager.putPoint(putPointRequest);
 	 * </pre>
 	 * 
 	 * @param putPointRequest
 	 *            Container for the necessary parameters to execute put point request.
 	 * 
-	 * @return Result of put point request.
+	 * @return Response of put point request.
 	 */
-	public PutPointResult putPoint(PutPointRequest putPointRequest) {
+	public PutPointResponse putPoint(PutPointRequest putPointRequest) {
 		return dynamoDBManager.putPoint(putPointRequest);
 	}
 	
@@ -149,15 +135,15 @@ public class GeoDataManager {
 	 * putPointRequest.getPutItemRequest().getItem().put(&quot;title&quot;, titleValue);
 	 * List<PutPointRequest> putPointRequests = new ArrayList<PutPointRequest>();
 	 * putPointRequests.add(putPointRequest);
-	 * BatchWritePointResult batchWritePointResult = geoDataManager.batchWritePoints(putPointRequests);
+	 * BatchWritePointResponse batchWritePointResponse = geoDataManager.batchWritePoints(putPointRequests);
 	 * </pre>
 	 * 
 	 * @param putPointRequests
 	 *            Container for the necessary parameters to execute put point request.
 	 * 
-	 * @return Result of batch put point request.
+	 * @return Response of batch put point request.
 	 */	
-	public BatchWritePointResult batchWritePoints(List<PutPointRequest> putPointRequests) {
+	public BatchWritePointResponse batchWritePoints(List<PutPointRequest> putPointRequests) {
 		return dynamoDBManager.batchWritePoints(putPointRequests);
 	}
 
@@ -172,17 +158,17 @@ public class GeoDataManager {
 	 * AttributeValue rangeKeyValue = new AttributeValue().withS(&quot;a6feb446-c7f2-4b48-9b3a-0f87744a5047&quot;);
 	 * 
 	 * GetPointRequest getPointRequest = new GetPointRequest(geoPoint, rangeKeyValue);
-	 * GetPointResult getPointResult = geoIndexManager.getPoint(getPointRequest);
+	 * GetPointResponse getPointResponse = geoIndexManager.getPoint(getPointRequest);
 	 * 
-	 * System.out.println(&quot;item: &quot; + getPointResult.getGetItemResult().getItem());
+	 * System.out.println(&quot;item: &quot; + getPointResponse.getGetItemResponse().getItem());
 	 * </pre>
 	 * 
 	 * @param getPointRequest
 	 *            Container for the necessary parameters to execute get point request.
 	 * 
-	 * @return Result of get point request.
+	 * @return Response of get point request.
 	 * */
-	public GetPointResult getPoint(GetPointRequest getPointRequest) {
+	public GetPointResponse getPoint(GetPointRequest getPointRequest) {
 		return dynamoDBManager.getPoint(getPointRequest);
 	}
 
@@ -199,9 +185,9 @@ public class GeoDataManager {
 	 * GeoPoint maxPoint = new GeoPoint(49.5, -120.3);
 	 * 
 	 * QueryRectangleRequest queryRectangleRequest = new QueryRectangleRequest(minPoint, maxPoint);
-	 * QueryRectangleResult queryRectangleResult = geoIndexManager.queryRectangle(queryRectangleRequest);
+	 * QueryRectangleResponse queryRectangleResponse = geoIndexManager.queryRectangle(queryRectangleRequest);
 	 * 
-	 * for (Map&lt;String, AttributeValue&gt; item : queryRectangleResult.getItem()) {
+	 * for (Map&lt;String, AttributeValue&gt; item : queryRectangleResponse.getItem()) {
 	 * 	System.out.println(&quot;item: &quot; + item);
 	 * }
 	 * </pre>
@@ -209,9 +195,9 @@ public class GeoDataManager {
 	 * @param queryRectangleRequest
 	 *            Container for the necessary parameters to execute rectangle query request.
 	 * 
-	 * @return Result of rectangle query request.
+	 * @return Response of rectangle query request.
 	 */
-	public QueryRectangleResult queryRectangle(QueryRectangleRequest queryRectangleRequest) {
+	public QueryRectangleResponse queryRectangle(QueryRectangleRequest queryRectangleRequest) {
 		S2LatLngRect latLngRect = S2Util.getBoundingLatLngRect(queryRectangleRequest);
 
 		S2CellUnion cellUnion = S2Manager.findCellIds(latLngRect);
@@ -219,7 +205,7 @@ public class GeoDataManager {
 		List<GeohashRange> ranges = mergeCells(cellUnion);
 		cellUnion = null;
 
-		return new QueryRectangleResult(dispatchQueries(ranges, queryRectangleRequest));
+		return new QueryRectangleResponse(dispatchQueries(ranges, queryRectangleRequest));
 	}
 
 	/**
@@ -232,9 +218,9 @@ public class GeoDataManager {
 	 * GeoPoint centerPoint = new GeoPoint(47.5, -122.3);
 	 * 
 	 * QueryRadiusRequest queryRadiusRequest = new QueryRadiusRequest(centerPoint, 100);
-	 * QueryRadiusResult queryRadiusResult = geoIndexManager.queryRadius(queryRadiusRequest);
+	 * QueryRadiusResponse queryRadiusResponse = geoIndexManager.queryRadius(queryRadiusRequest);
 	 * 
-	 * for (Map&lt;String, AttributeValue&gt; item : queryRadiusResult.getItem()) {
+	 * for (Map&lt;String, AttributeValue&gt; item : queryRadiusResponse.getItem()) {
 	 * 	System.out.println(&quot;item: &quot; + item);
 	 * }
 	 * </pre>
@@ -242,9 +228,9 @@ public class GeoDataManager {
 	 * @param queryRadiusRequest
 	 *            Container for the necessary parameters to execute radius query request.
 	 * 
-	 * @return Result of radius query request.
+	 * @return Response of radius query request.
 	 * */
-	public QueryRadiusResult queryRadius(QueryRadiusRequest queryRadiusRequest) {
+	public QueryRadiusResponse queryRadius(QueryRadiusRequest queryRadiusRequest) {
 		S2LatLngRect latLngRect = S2Util.getBoundingLatLngRect(queryRadiusRequest);
 
 		S2CellUnion cellUnion = S2Manager.findCellIds(latLngRect);
@@ -252,7 +238,7 @@ public class GeoDataManager {
 		List<GeohashRange> ranges = mergeCells(cellUnion);
 		cellUnion = null;
 
-		return new QueryRadiusResult(dispatchQueries(ranges, queryRadiusRequest));
+		return new QueryRadiusResponse(dispatchQueries(ranges, queryRadiusRequest));
 	}
 
 	/**
@@ -276,16 +262,16 @@ public class GeoDataManager {
 	 * 		.withValue(titleValue);
 	 * updatePointRequest.getUpdateItemRequest().getAttributeUpdates().put(&quot;title&quot;, titleValueUpdate);
 	 * 
-	 * UpdatePointResult updatePointResult = geoIndexManager.updatePoint(updatePointRequest);
+	 * UpdatePointResponse updatePointResponse = geoIndexManager.updatePoint(updatePointRequest);
 	 * </pre>
 	 * 
 	 * @param updatePointRequest
 	 *            Container for the necessary parameters to execute update point request.
 	 * 
-	 * @return Result of update point request.
+	 * @return Response of update point request.
 	 */
-	public UpdatePointResult updatePoint(UpdatePointRequest updatePointRequest) {
-		return dynamoDBManager.updatePoint(updatePointRequest);
+	public UpdatePointResponse updatePoint(UpdatePointRequest updatePointRequest, Map<String, AttributeValueUpdate> updates) {
+		return dynamoDBManager.updatePoint(updatePointRequest, updates);
 	}
 
 	/**
@@ -301,15 +287,15 @@ public class GeoDataManager {
 	 * AttributeValue rangeKeyValue = new AttributeValue().withS(rangeKey);
 	 * 
 	 * DeletePointRequest deletePointRequest = new DeletePointRequest(geoPoint, rangeKeyValue);
-	 * DeletePointResult deletePointResult = geoIndexManager.deletePoint(deletePointRequest);
+	 * DeletePointResponse deletePointResponse = geoIndexManager.deletePoint(deletePointRequest);
 	 * </pre>
 	 * 
 	 * @param deletePointRequest
 	 *            Container for the necessary parameters to execute delete point request.
 	 * 
-	 * @return Result of delete point request.
+	 * @return Response of delete point request.
 	 */
-	public DeletePointResult deletePoint(DeletePointRequest deletePointRequest) {
+	public DeletePointResponse deletePoint(DeletePointRequest deletePointRequest) {
 		return dynamoDBManager.deletePoint(deletePointRequest);
 	}
 
@@ -349,20 +335,22 @@ public class GeoDataManager {
 	 * @param ranges
 	 *            A list of geohash ranges that will be used to query Amazon DynamoDB.
 	 * 
-	 * @param latLngRect
+	 * @param geoQueryRequest
 	 *            The rectangle area that will be used as a reference point for precise filtering.
 	 * 
 	 * @return Aggregated and filtered items returned from Amazon DynamoDB.
 	 */
-	private GeoQueryResult dispatchQueries(List<GeohashRange> ranges, GeoQueryRequest geoQueryRequest) {
-		GeoQueryResult geoQueryResult = new GeoQueryResult();
+	private GeoQueryResponse dispatchQueries(List<GeohashRange> ranges, GeoQueryRequest geoQueryRequest) {
+		GeoQueryResponse geoQueryResponse = new GeoQueryResponse();
 
 		ExecutorService executorService = config.getExecutorService();
 		List<Future<?>> futureList = new ArrayList<Future<?>>();
 
 		for (GeohashRange outerRange : ranges) {
-			for (GeohashRange range : outerRange.trySplit(config.getHashKeyLength())) {
-				GeoQueryThread geoQueryThread = new GeoQueryThread(geoQueryRequest, geoQueryResult, range);
+			List<GeohashRange> outrRangesSplit = outerRange.trySplit(config.getHashKeyLength());
+			for (GeohashRange range : outrRangesSplit) {
+				GeoQueryThread geoQueryThread = new GeoQueryThread(geoQueryRequest, geoQueryResponse, range);
+				System.out.println("Dispatch Job");
 				futureList.add(executorService.submit(geoQueryThread));
 			}
 		}
@@ -375,12 +363,12 @@ public class GeoDataManager {
 				for (int j = i + 1; j < futureList.size(); j++) {
 					futureList.get(j).cancel(true);
 				}
-				throw new AmazonClientException("Querying Amazon DynamoDB failed.", e);
+				throw SdkException.builder().cause(e).message("Querying Amazon DynamoDB failed.").build();
 			}
 		}
 		futureList = null;
 
-		return geoQueryResult;
+		return geoQueryResponse;
 	}
 
 	/**
@@ -389,7 +377,7 @@ public class GeoDataManager {
 	 * @param list
 	 *            List of items return by Amazon DynamoDB. It may contains points outside of the actual area queried.
 	 * 
-	 * @param latLngRect
+	 * @param geoQueryRequest
 	 *            Queried area. Any points outside of this area need to be discarded.
 	 * 
 	 * @return List of items within the queried area.
@@ -412,7 +400,7 @@ public class GeoDataManager {
 		}
 
 		for (Map<String, AttributeValue> item : list) {
-			String geoJson = item.get(config.getGeoJsonAttributeName()).getS();
+			String geoJson = item.get(config.getGeoJsonAttributeName()).s();
 			GeoPoint geoPoint = GeoJsonMapper.geoPointFromString(geoJson);
 
 			S2LatLng latLng = S2LatLng.fromDegrees(geoPoint.getLatitude(), geoPoint.getLongitude());
@@ -431,34 +419,33 @@ public class GeoDataManager {
 	 * Worker thread to query Amazon DynamoDB.
 	 * */
 	private class GeoQueryThread extends Thread {
-		private GeoQueryRequest geoQueryRequest;
-		private GeoQueryResult geoQueryResult;
-		private GeohashRange range;
+		private final GeoQueryRequest geoQueryRequest;
+		private final GeoQueryResponse geoQueryResponse;
+		private final GeohashRange range;
 
-		public GeoQueryThread(GeoQueryRequest geoQueryRequest, GeoQueryResult geoQueryResult, GeohashRange range) {
+		public GeoQueryThread(GeoQueryRequest geoQueryRequest, GeoQueryResponse geoQueryResponse, GeohashRange range) {
 			this.geoQueryRequest = geoQueryRequest;
-			this.geoQueryResult = geoQueryResult;
+			this.geoQueryResponse = geoQueryResponse;
 			this.range = range;
 		}
 
 		public void run() {
-			QueryRequest queryRequest = DynamoDBUtil.copyQueryRequest(geoQueryRequest.getQueryRequest());
 			long hashKey = S2Manager.generateHashKey(range.getRangeMin(), config.getHashKeyLength());
 
-			List<QueryResult> queryResults = dynamoDBManager.queryGeohash(queryRequest, hashKey, range);
+			List<QueryResponse> queryResponses = dynamoDBManager.queryGeohash(hashKey, range);
 
-			for (QueryResult queryResult : queryResults) {
+			for (QueryResponse queryResponse : queryResponses) {
 				if (isInterrupted()) {
 					return;
 				}
 
-				// getQueryResults() returns a synchronized list.
-				geoQueryResult.getQueryResults().add(queryResult);
+				// getQueryResponses() returns a synchronized list.
+				geoQueryResponse.getQueryResponses().add(queryResponse);
 
-				List<Map<String, AttributeValue>> filteredQueryResult = filter(queryResult.getItems(), geoQueryRequest);
+				List<Map<String, AttributeValue>> filteredQueryResponse = filter(queryResponse.items(), geoQueryRequest);
 
 				// getItem() returns a synchronized list.
-				geoQueryResult.getItem().addAll(filteredQueryResult);
+				geoQueryResponse.getItem().addAll(filteredQueryResponse);
 			}
 		}
 	}
