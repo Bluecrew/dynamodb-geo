@@ -15,16 +15,16 @@
 
 package com.amazonaws.geo.model;
 
-import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemResponse;
 
-public class UpdatePointResult extends GeoDataResult {
-	private UpdateItemResult updateItemResult;
+public class DeletePointResponse extends GeoDataResponse {
+	private DeleteItemResponse deleteItemResponse;
 
-	public UpdatePointResult(UpdateItemResult updateItemResult) {
-		this.updateItemResult = updateItemResult;
+	public DeletePointResponse(DeleteItemResponse deleteItemResponse) {
+		this.deleteItemResponse = deleteItemResponse;
 	}
 
-	public UpdateItemResult getUpdateItemResult() {
-		return updateItemResult;
+	public DeleteItemResponse getDeleteItemResponse() {
+		return deleteItemResponse;
 	}
 }

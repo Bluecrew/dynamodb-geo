@@ -15,11 +15,11 @@
 
 package com.amazonaws.geo.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.amazonaws.geo.GeoDataManagerConfiguration;
 import com.amazonaws.geo.s2.internal.S2Manager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class GeohashRange {
 
